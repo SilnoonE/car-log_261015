@@ -1,0 +1,81 @@
+<resources>
+    <style name="Base.Theme.ThirtythreeCarManagement" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">#1C4135</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#EDF3E8</item>
+        <item name="colorOnPrimaryContainer">#1C4135</item>
+        <item name="colorSecondary">#1C4135</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSecondaryContainer">#EDF3E8</item>
+        <item name="colorOnSecondaryContainer">#1C4135</item>
+        <item name="colorTertiary">#1C4135</item>
+        <item name="colorOnTertiary">#FFFFFF</item>
+        <item name="colorTertiaryContainer">#EDF3E8</item>
+        <item name="colorOnTertiaryContainer">#1C4135</item>
+        <item name="colorSurface">#FFFFFF</item>
+        <item name="colorOnSurface">#1F2824</item>
+        <item name="colorSurfaceVariant">#F2F5EF</item>
+        <item name="colorOnSurfaceVariant">#69736E</item>
+        <item name="colorSurfaceContainerLowest">#FFFFFF</item>
+        <item name="colorSurfaceContainerLow">#FFFFFF</item>
+        <item name="colorSurfaceContainer">#FFFFFF</item>
+        <item name="colorSurfaceContainerHigh">#FFFFFF</item>
+        <item name="colorSurfaceContainerHighest">#FFFFFF</item>
+        <item name="colorSurfaceBright">#FFFFFF</item>
+        <item name="colorSurfaceDim">#F2F5EF</item>
+        <item name="colorOutline">#9AA69A</item>
+        <item name="colorOutlineVariant">#D7DED1</item>
+        <item name="colorError">#AE4028</item>
+        <item name="colorErrorContainer">#FDECE5</item>
+        <item name="colorOnErrorContainer">#732815</item>
+        <item name="colorControlActivated">#1C4135</item>
+        <item name="colorControlNormal">#69736E</item>
+        <item name="colorControlHighlight">#221C4135</item>
+        <item name="colorBackgroundFloating">#FFFFFF</item>
+        <item name="elevationOverlayEnabled">false</item>
+        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.Chagok.BottomSheet</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.Chagok.Dialog</item>
+        <item name="android:colorAccent">#1C4135</item>
+        <item name="android:colorControlActivated">#1C4135</item>
+        <item name="android:colorControlNormal">#69736E</item>
+        <item name="android:colorControlHighlight">#221C4135</item>
+        <item name="android:colorBackground">#F6F7F4</item>
+        <item name="android:colorBackgroundFloating">#FFFFFF</item>
+        <item name="android:textColorPrimary">@color/chagok_text_primary</item>
+        <item name="android:textColorSecondary">@color/chagok_text_secondary</item>
+        <item name="android:datePickerDialogTheme">@style/Theme.Chagok.DatePicker</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+    <style name="Theme.ThirtythreeCarManagement" parent="Base.Theme.ThirtythreeCarManagement"/>
+    <style name="ThemeOverlay.Chagok.BottomSheet" parent="ThemeOverlay.Material3.BottomSheetDialog">
+        <item name="colorSurface">#FFFFFF</item>
+        <item name="colorSurfaceContainerLow">#FFFFFF</item>
+        <item name="elevationOverlayEnabled">false</item>
+        <item name="bottomSheetStyle">@style/Widget.Chagok.BottomSheet</item>
+    </style>
+    <style name="Widget.Chagok.BottomSheet" parent="Widget.Material3.BottomSheet.Modal">
+        <item name="backgroundTint">#FFFFFF</item>
+    </style>
+    <style name="ThemeOverlay.Chagok.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorSurface">#FFFFFF</item>
+        <item name="colorSurfaceContainerHigh">#FFFFFF</item>
+        <item name="colorPrimary">#1C4135</item>
+        <item name="colorOnSurface">#1F2824</item>
+        <item name="colorOnSurfaceVariant">#69736E</item>
+        <item name="elevationOverlayEnabled">false</item>
+    </style>
+    <style name="Theme.Chagok.DatePicker" parent="android:style/Theme.Material.Light.Dialog.Alert">
+        <item name="android:colorAccent">#1C4135</item>
+        <item name="android:colorControlActivated">#1C4135</item>
+        <item name="android:colorBackground">#FFFFFF</item>
+        <item name="android:colorBackgroundFloating">#FFFFFF</item>
+        <item name="android:textColorPrimary">@color/chagok_text_primary</item>
+        <item name="android:textColorSecondary">@color/chagok_text_secondary</item>
+        <item name="android:datePickerStyle">@style/Widget.Chagok.DatePicker</item>
+    </style>
+    <style name="Widget.Chagok.DatePicker" parent="android:style/Widget.Material.Light.DatePicker">
+        <item name="android:headerBackground">#1C4135</item>
+    </style>
+</resources>
