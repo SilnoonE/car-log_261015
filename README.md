@@ -85,3 +85,5 @@ Windows에서는 `gradlew.bat`를 사용합니다. Gradle Wrapper 9.4.1과 AGP 9
 [개인정보처리방침](https://rudazio.blogspot.com/p/blog-page.html) · [개발자 홈페이지](https://rudazio.blogspot.com/) · [개발자 GitHub](https://github.com/SilnoonE)
 
 공개 저장소에 별도의 오픈소스 라이선스는 설정하지 않았습니다.
+
+[차곡 개발 기록과 코드 예제](devlog/README.md)
