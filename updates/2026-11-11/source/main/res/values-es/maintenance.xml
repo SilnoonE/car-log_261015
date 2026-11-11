@@ -1,0 +1,15 @@
+<resources>
+    <string name="period">Período de registros</string>
+    <string name="all_dates">Todas las fechas</string>
+    <string name="this_month">Este mes</string>
+    <string name="last_month">Mes pasado</string>
+    <string name="custom_dates">Período personalizado</string>
+    <string name="start_day">Fecha inicial</string>
+    <string name="end_day">Fecha final</string>
+    <string name="history_all">Ver historial de mantenimiento</string>
+    <string name="cost_optional">Coste (KRW, opcional)</string>
+    <string name="repeat_km">Distancia hasta el próximo servicio (km, opcional)</string>
+    <string name="repeat_months">Meses hasta el próximo servicio (opcional)</string>
+    <string name="check_completion">Revisa la fecha, el kilometraje, el importe y los intervalos.</string>
+    <string name="backup_preview">Vehículo %1$s · %2$d gastos · Último gasto %3$s</string>
+</resources>

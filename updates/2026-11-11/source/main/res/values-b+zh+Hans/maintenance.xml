@@ -1,0 +1,15 @@
+<resources>
+    <string name="period">记录期间</string>
+    <string name="all_dates">全部日期</string>
+    <string name="this_month">本月</string>
+    <string name="last_month">上月</string>
+    <string name="custom_dates">自选期间</string>
+    <string name="start_day">开始日期</string>
+    <string name="end_day">结束日期</string>
+    <string name="history_all">查看全部保养记录</string>
+    <string name="cost_optional">保养费用（KRW，可选）</string>
+    <string name="repeat_km">下次保养间隔（公里，可选）</string>
+    <string name="repeat_months">下次保养间隔（月，可选）</string>
+    <string name="check_completion">请检查日期、里程、费用和周期。</string>
+    <string name="backup_preview">车辆 %1$s · %2$d 笔支出 · 最近支出 %3$s</string>
+</resources>

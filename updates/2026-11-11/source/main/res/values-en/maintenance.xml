@@ -1,0 +1,15 @@
+<resources>
+    <string name="period">Record period</string>
+    <string name="all_dates">All dates</string>
+    <string name="this_month">This month</string>
+    <string name="last_month">Last month</string>
+    <string name="custom_dates">Custom period</string>
+    <string name="start_day">Start date</string>
+    <string name="end_day">End date</string>
+    <string name="history_all">Full maintenance history</string>
+    <string name="cost_optional">Cost (KRW, optional)</string>
+    <string name="repeat_km">Distance until next service (km, optional)</string>
+    <string name="repeat_months">Months until next service (optional)</string>
+    <string name="check_completion">Check the date, mileage, cost and intervals.</string>
+    <string name="backup_preview">Vehicle %1$s · %2$d expenses · Latest expense %3$s</string>
+</resources>

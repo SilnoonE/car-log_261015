@@ -1,0 +1,15 @@
+<resources>
+    <string name="period">記録期間</string>
+    <string name="all_dates">全期間</string>
+    <string name="this_month">今月</string>
+    <string name="last_month">先月</string>
+    <string name="custom_dates">期間を指定</string>
+    <string name="start_day">開始日</string>
+    <string name="end_day">終了日</string>
+    <string name="history_all">整備履歴をすべて見る</string>
+    <string name="cost_optional">整備費用（KRW、任意）</string>
+    <string name="repeat_km">次回までの距離（km、任意）</string>
+    <string name="repeat_months">次回までの月数（任意）</string>
+    <string name="check_completion">日付、走行距離、費用、間隔を確認してください。</string>
+    <string name="backup_preview">車両 %1$s · 支出 %2$d件 · 最終支出 %3$s</string>
+</resources>

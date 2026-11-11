@@ -1,0 +1,15 @@
+<resources>
+    <string name="period">기록 기간</string>
+    <string name="all_dates">전체 기간</string>
+    <string name="this_month">이번 달</string>
+    <string name="last_month">지난달</string>
+    <string name="custom_dates">기간 직접 선택</string>
+    <string name="start_day">시작일</string>
+    <string name="end_day">종료일</string>
+    <string name="history_all">정비 이력 전체 보기</string>
+    <string name="cost_optional">정비 비용 (원, 선택)</string>
+    <string name="repeat_km">다음 교체까지 거리 (km, 선택)</string>
+    <string name="repeat_months">다음 교체까지 개월 수 (선택)</string>
+    <string name="check_completion">날짜, 주행거리, 금액과 반복 주기를 확인해 주세요.</string>
+    <string name="backup_preview">차량 %1$s · 지출 %2$d건 · 최근 지출 %3$s</string>
+</resources>

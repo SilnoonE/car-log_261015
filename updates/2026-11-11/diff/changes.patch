@@ -1,0 +1,287 @@
+--- a/androidTest/java/com/thirtythree_carmanagement/CarStoreTest.kt
++++ b/androidTest/java/com/thirtythree_carmanagement/CarStoreTest.kt
+@@ -13,6 +13,22 @@
+     @Before fun before() { context.deleteDatabase("test-car.db"); store=CarStore(context,"test-car.db"); store.saveVehicle(Vehicle("테스트 차","아반떼",2024,"휘발유",10000,300000)) }
+     @After fun after() { store.close(); context.deleteDatabase("test-car.db") }
+     private fun record()=Expense(category=Category.FUEL,title="주유 테스트",amount=70000,date=LocalDate.now(),odometer=10500,quantity=40.0,fullTank=true,place="주유소",memo="한글 메모")
++    @Test fun completionRecordsCostNextServiceAndBlocksDoubleSave() {
++        val planned=Reminder(title="Oil",odometer=12000)
++        val id=store.saveReminder(planned)
++        val completed=planned.copy(id=id,date=LocalDate.now(),odometer=12100,done=true)
++        val cost=Expense(category=Category.SERVICE,title="Oil",amount=45000,date=LocalDate.now(),odometer=12100)
++        val next=planned.copy(odometer=22100)
++        store.complete(completed,cost,next)
++        val result=store.snapshot()
++        assertEquals(12100L,result.vehicle!!.odometer)
++        assertEquals(1,result.expenses.size)
++        assertEquals(2,result.reminders.size)
++        assertTrue(runCatching { store.complete(completed,cost,next) }.isFailure)
++        assertEquals(result,store.snapshot())
++        assertEquals(1,store.parseBackup(store.exportJson()).expenses.size)
++        assertEquals(result,store.snapshot())
++    }
+     @Test fun createEditDeleteAndReopenKeepTotalsCorrect() {
+         val id=store.saveExpense(record()); assertEquals(70000L,Metrics.total(store.snapshot().expenses))
+         assertEquals(10500L,store.snapshot().vehicle!!.odometer)
+--- a/main/java/com/thirtythree_carmanagement/ChagokActivity.kt
++++ b/main/java/com/thirtythree_carmanagement/ChagokActivity.kt
+@@ -54,6 +54,8 @@
+     private var ready=false
+     private var query=""
+     private var filter:Category?=null
++    private var fromDate: LocalDate? = null
++    private var untilDate: LocalDate? = null
+     private var limit=100
+     private val export=registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+         if(uri!=null) action({ contentResolver.openOutputStream(uri,"wt")?.use { it.write(store.exportJson().toByteArray(Charsets.UTF_8)) } ?: error(getString(R.string.unable_to_open_the_file)) },getString(R.string.backup_saved))
+@@ -67,16 +69,16 @@
+                         val output=java.io.ByteArrayOutputStream()
+                         val buffer=ByteArray(8192)
+                         while(true) { val n=input.read(buffer); if(n<0)break; require(output.size()+n<=10_000_000) { getString(R.string.choose_a_file_of_mb_or_less) }; output.write(buffer,0,n) }
+-                        output.toString("UTF-8")
++                        store.parseBackup(output.toString("UTF-8"))
+                     } ?: error(getString(R.string.unable_to_read_the_file))
+                 }
+                 runOnUiThread {
+                     busy=false
+                     if(isDestroyed)return@runOnUiThread
+-                    result.onSuccess { text ->
++                    result.onSuccess { backup ->
+                         MaterialAlertDialogBuilder(this).setTitle(getString(R.string.restore_this_backup))
+-                            .setMessage(getString(R.string.this_replaces_your_current_vehicle_expenses_and))
+-                            .setNegativeButton(getString(R.string.cancel),null).setPositiveButton(getString(R.string.restore)) { _,_ -> action({ store.restoreJson(text) },getString(R.string.backup_restored)) }.show()
++                            .setMessage(getString(R.string.backup_preview, backup.vehicle?.name ?: "—", backup.expenses.size, backup.expenses.maxOfOrNull { it.date }?.toString() ?: "—") + "\n\n" + getString(R.string.this_replaces_your_current_vehicle_expenses_and))
++                            .setNegativeButton(getString(R.string.cancel),null).setPositiveButton(getString(R.string.restore)) { _,_ -> action({ store.restoreBackup(backup) },getString(R.string.backup_restored)) }.show()
+                     }.onFailure { notice(it.message?:getString(R.string.could_not_read_the_file)) }
+                 }
+             }
+@@ -99,13 +101,23 @@
+     }
+     override fun onCreate(state:Bundle?) {
+         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+-        super.onCreate(state); enableEdgeToEdge()
++        super.onCreate(state)
++        val preferences = getSharedPreferences("settings", MODE_PRIVATE)
++        if (!preferences.getBoolean("initialLanguageSet", false)) {
++            if (AppCompatDelegate.getApplicationLocales().isEmpty) {
++                AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("ko"))
++            }
++            preferences.edit().putBoolean("initialLanguageSet", true).apply()
++        }
++        enableEdgeToEdge()
+         val qaDatabase=if(com.example.thirtythree_carmanagement.BuildConfig.DEBUG)
+             intent.getStringExtra("qaDatabaseName")?.takeIf { it.matches(Regex("qa-[a-zA-Z0-9-]+\\.db")) } else null
+         store=CarStore(this,qaDatabase?:"chagok.db"); tab=state?.getInt("tab")?:0
+         settingsOpen=state?.getBoolean("settingsOpen")?:false
+         settingsBack=object:OnBackPressedCallback(settingsOpen) { override fun handleOnBackPressed() { settingsOpen=false; render() } }
+         onBackPressedDispatcher.addCallback(this,settingsBack)
++        fromDate=state?.getString("fromDate")?.let(LocalDate::parse)
++        untilDate=state?.getString("untilDate")?.let(LocalDate::parse)
+         month=state?.getString("month")?.let { YearMonth.parse(it) }?:YearMonth.now()
+         query=state?.getString("query")?:""
+         filter=state?.getString("filter")?.let { Category.valueOf(it) }
+@@ -138,7 +150,7 @@
+         ReminderJob.schedule(this)
+         ads.start()
+     }
+-    override fun onSaveInstanceState(outState:Bundle) { outState.putBoolean("settingsOpen",settingsOpen); outState.putInt("tab",tab); outState.putString("month",month.toString()); outState.putString("query",query); outState.putString("filter",filter?.name); super.onSaveInstanceState(outState) }
++    override fun onSaveInstanceState(outState:Bundle) { outState.putString("fromDate",fromDate?.toString()); outState.putString("untilDate",untilDate?.toString()); outState.putBoolean("settingsOpen",settingsOpen); outState.putInt("tab",tab); outState.putString("month",month.toString()); outState.putString("query",query); outState.putString("filter",filter?.name); super.onSaveInstanceState(outState) }
+     override fun onResume() { super.onResume(); if(::ads.isInitialized)ads.resume() }
+     override fun onPause() { if(::ads.isInitialized)ads.pause(); super.onPause() }
+     override fun onDestroy() { if(::ads.isInitialized)ads.destroy(); if(::store.isInitialized)executor.execute { store.close() }; executor.shutdown(); super.onDestroy() }
+@@ -232,10 +244,26 @@
+         page.addView(label(getString(R.string.your_fuel_maintenance_and_expense_history),13,color=muted)); gap(page,16)
+         val search=field(page,getString(R.string.search_title_place_or_note),query,R.id.record_search)
+         val select=spinner(listOf(getString(R.string.all_categories))+Category.entries.map { it.display(this) },filter?.ordinal?.plus(1)?:0); page.addView(select); gap(page,18)
++        page.addView(button(if(fromDate==null) getString(R.string.period) else "$fromDate ~ $untilDate",outline=true) {
++            val choices = arrayOf(getString(R.string.all_dates),getString(R.string.this_month),getString(R.string.last_month),getString(R.string.custom_dates))
++            fun applyDates(start:LocalDate?, end:LocalDate?) { fromDate=start; untilDate=end; limit=100; render() }
++            MaterialAlertDialogBuilder(this).setTitle(getString(R.string.period)).setItems(choices) { _, index ->
++                when(index) {
++                    0 -> applyDates(null,null)
++                    1,2 -> {
++                        val chosen=YearMonth.now().minusMonths((index-1).toLong())
++                        applyDates(chosen.atDay(1),chosen.atEndOfMonth())
++                    }
++                    else -> pickDay(fromDate ?: LocalDate.now(),getString(R.string.start_day)) { start ->
++                        pickDay(maxOf(start,untilDate ?: LocalDate.now()),getString(R.string.end_day),start) { end -> applyDates(start,end) }
++                    }
++                }
++            }.show()
++        })
+         val holder=col(); page.addView(holder)
+         fun update() {
+             holder.removeAllViews()
+-            val list=data.expenses.filter { (filter==null||it.category==filter)&&(query.isBlank()||(it.title+" "+it.place+" "+it.memo).contains(query,true)) }
++            val list=data.expenses.filter { (fromDate==null || !it.date.isBefore(fromDate)) && (untilDate==null || !it.date.isAfter(untilDate)) && (filter==null||it.category==filter)&&(query.isBlank()||(it.title+" "+it.place+" "+it.memo).contains(query,true)) }
+             holder.addView(label(getString(R.string.records_value_value,list.size,won(Metrics.total(list))),13,true,muted)); gap(holder,12)
+             if(list.isEmpty()) { val p=panel(); p.addView(label(getString(R.string.no_matching_records),15,true)); gap(p,10); p.addView(label(getString(R.string.try_another_search_or_category_or_add),13,color=muted)); holder.addView(card(p,Color.rgb(237,244,225))); return }
+             var last=""
+@@ -294,7 +322,7 @@
+         if(data.reminders.none { !it.done })empty(getString(R.string.no_reminders_yet),getString(R.string.keep_track_of_maintenance_and_insurance_renewals))
+         data.reminders.filter { !it.done }.forEach { reminderRow(it) }
+         val done=data.reminders.filter { it.done }
+-        if(done.isNotEmpty()) { gap(page,12); page.addView(label(getString(R.string.completed_reminders),13,true,muted)); gap(page,10); done.take(10).forEach { reminderRow(it) } }
++        if(done.isNotEmpty()) { gap(page,12); page.addView(label(getString(R.string.completed_reminders),13,true,muted)); gap(page,10); page.addView(button(getString(R.string.history_all),outline=true) { showHistory(done) }); done.sortedByDescending { it.date }.take(3).forEach { reminderRow(it) } }
+         gap(page,12); page.addView(label(getString(R.string.check_your_vehicle_manual_and_set_maintenance),12,color=muted))
+     }
+     private fun settings() {
+@@ -357,12 +385,67 @@
+             MaterialAlertDialogBuilder(this@ChagokActivity).setTitle(r.title).setItems(options) { _,i->when(options[i]) {
+                 getString(R.string.edit_reminder)->reminderForm(r)
+                 getString(R.string.mark_as_planned)->action({store.saveReminder(r.copy(done=false))},getString(R.string.marked_as_planned))
+-                getString(R.string.mark_as_done)->action({store.saveReminder(r.copy(done=true))},getString(R.string.reminder_completed_record_any_expense_separately))
++                getString(R.string.mark_as_done)->completeForm(r)
+                 getString(R.string.record_maintenance_cost)->expenseForm(category=Category.SERVICE,initialTitle=r.title)
+                 else->confirm(getString(R.string.delete_this_reminder),getString(R.string.only_the_selected_reminder_will_be_deleted)) { action({store.deleteReminder(r.id)},getString(R.string.reminder_deleted)) }
+             } }.show()
+         } }; page.addView(c); gap(page,10)
+     }
++    private fun pickDay(initial:LocalDate,title:String,minimum:LocalDate?=null, choose:(LocalDate)->Unit) {
++        val picker=DatePickerDialog(this,{ _,y,m,d -> choose(LocalDate.of(y,m+1,d)) },initial.year,initial.monthValue-1,initial.dayOfMonth)
++        minimum?.let { picker.datePicker.minDate=it.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() }
++        picker.setTitle(title)
++        picker.show()
++    }
++
++    private fun showHistory(done:List<Reminder>) {
++        val body=col()
++        val search=field(body,getString(R.string.maintenance_item))
++        val list=ListView(this)
++        body.addView(list,LinearLayout.LayoutParams(-1,dp(300)))
++        fun update() {
++            val rows=done.filter { it.title.contains(search.text.toString(),true) }.sortedByDescending { it.date }
++            list.adapter=ArrayAdapter(this,android.R.layout.simple_list_item_1,rows.map {
++                listOfNotNull(it.title,it.date?.toString(),it.odometer?.let { km -> number(km)+" km" }).joinToString("  ·  ")
++            })
++        }
++        search.addTextChangedListener(object:TextWatcher {
++            override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int) {}
++            override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int) { update() }
++            override fun afterTextChanged(s:Editable?) {}
++        })
++        update()
++        MaterialAlertDialogBuilder(this).setTitle(getString(R.string.history_all)).setView(body).setPositiveButton(getString(R.string.close),null).show()
++    }
++
++    private fun completeForm(reminder:Reminder) {
++        val (dialog,form)=sheet(reminder.title)
++        var day=LocalDate.now()
++        val date=button(day.toString(),outline=true) {}
++        date.setOnClickListener { pickDay(day,getString(R.string.date)) { day=it; date.text=it.toString() } }
++        form.addView(date)
++        val km=field(form,getString(R.string.current_odometer_km),data.vehicle?.odometer?.toString().orEmpty(),numeric=true)
++        val amount=field(form,getString(R.string.cost_optional),numeric=true)
++        val distance=field(form,getString(R.string.repeat_km),numeric=true)
++        val months=field(form,getString(R.string.repeat_months),numeric=true)
++        val error=label("",13,color=Color.RED)
++        form.addView(error)
++        form.addView(button(getString(R.string.mark_as_done)) {
++            val reading=km.text.toString().toLongOrNull()
++            fun optional(input:TextInputEditText)=if(input.text.isNullOrBlank()) 0L else input.text.toString().toLongOrNull() ?: -1L
++            val cost=optional(amount); val interval=optional(distance); val period=optional(months)
++            if(reading==null || reading !in 0..9_999_999L || cost !in 0..1_000_000_000L ||
++                interval !in 0..(9_999_999L-reading) || period !in 0..1200 || day.isAfter(LocalDate.now()) || day.year<1900) {
++                error.text=getString(R.string.check_completion); return@button
++            }
++            val completed=reminder.copy(date=day,odometer=reading,done=true)
++            val next=if(period>0 || interval>0) Reminder(title=reminder.title,date=if(period>0) day.plusMonths(period) else null,odometer=if(interval>0) reading+interval else null) else null
++            val expense=if(cost>0) Expense(category=Category.SERVICE,title=reminder.title,amount=cost,date=day,odometer=reading) else null
++            action({ store.complete(completed,expense,next) },getString(R.string.saved)) { dialog.dismiss() }
++        })
++        showSheet(dialog)
++    }
++
+     private fun vehicleForm(existing:Vehicle?=data.vehicle) {
+         val (dialog,f)=sheet(if(existing==null)getString(R.string.add_my_car_150) else getString(R.string.edit_vehicle))
+         val name=field(f,getString(R.string.vehicle_name),existing?.name?:"",R.id.vehicle_name)
+--- /dev/null
++++ b/main/res/values/maintenance.xml
+@@ -0,0 +1,15 @@
++<resources>
++    <string name="period">기록 기간</string>
++    <string name="all_dates">전체 기간</string>
++    <string name="this_month">이번 달</string>
++    <string name="last_month">지난달</string>
++    <string name="custom_dates">기간 직접 선택</string>
++    <string name="start_day">시작일</string>
++    <string name="end_day">종료일</string>
++    <string name="history_all">정비 이력 전체 보기</string>
++    <string name="cost_optional">정비 비용 (원, 선택)</string>
++    <string name="repeat_km">다음 교체까지 거리 (km, 선택)</string>
++    <string name="repeat_months">다음 교체까지 개월 수 (선택)</string>
++    <string name="check_completion">날짜, 주행거리, 금액과 반복 주기를 확인해 주세요.</string>
++    <string name="backup_preview">차량 %1$s · 지출 %2$d건 · 최근 지출 %3$s</string>
++</resources>
+--- /dev/null
++++ b/main/res/values-b+zh+Hans/maintenance.xml
+@@ -0,0 +1,15 @@
++<resources>
++    <string name="period">记录期间</string>
++    <string name="all_dates">全部日期</string>
++    <string name="this_month">本月</string>
++    <string name="last_month">上月</string>
++    <string name="custom_dates">自选期间</string>
++    <string name="start_day">开始日期</string>
++    <string name="end_day">结束日期</string>
++    <string name="history_all">查看全部保养记录</string>
++    <string name="cost_optional">保养费用（KRW，可选）</string>
++    <string name="repeat_km">下次保养间隔（公里，可选）</string>
++    <string name="repeat_months">下次保养间隔（月，可选）</string>
++    <string name="check_completion">请检查日期、里程、费用和周期。</string>
++    <string name="backup_preview">车辆 %1$s · %2$d 笔支出 · 最近支出 %3$s</string>
++</resources>
+--- /dev/null
++++ b/main/res/values-en/maintenance.xml
+@@ -0,0 +1,15 @@
++<resources>
++    <string name="period">Record period</string>
++    <string name="all_dates">All dates</string>
++    <string name="this_month">This month</string>
++    <string name="last_month">Last month</string>
++    <string name="custom_dates">Custom period</string>
++    <string name="start_day">Start date</string>
++    <string name="end_day">End date</string>
++    <string name="history_all">Full maintenance history</string>
++    <string name="cost_optional">Cost (KRW, optional)</string>
++    <string name="repeat_km">Distance until next service (km, optional)</string>
++    <string name="repeat_months">Months until next service (optional)</string>
++    <string name="check_completion">Check the date, mileage, cost and intervals.</string>
++    <string name="backup_preview">Vehicle %1$s · %2$d expenses · Latest expense %3$s</string>
++</resources>
+--- /dev/null
++++ b/main/res/values-es/maintenance.xml
+@@ -0,0 +1,15 @@
++<resources>
++    <string name="period">Período de registros</string>
++    <string name="all_dates">Todas las fechas</string>
++    <string name="this_month">Este mes</string>
++    <string name="last_month">Mes pasado</string>
++    <string name="custom_dates">Período personalizado</string>
++    <string name="start_day">Fecha inicial</string>
++    <string name="end_day">Fecha final</string>
++    <string name="history_all">Ver historial de mantenimiento</string>
++    <string name="cost_optional">Coste (KRW, opcional)</string>
++    <string name="repeat_km">Distancia hasta el próximo servicio (km, opcional)</string>
++    <string name="repeat_months">Meses hasta el próximo servicio (opcional)</string>
++    <string name="check_completion">Revisa la fecha, el kilometraje, el importe y los intervalos.</string>
++    <string name="backup_preview">Vehículo %1$s · %2$d gastos · Último gasto %3$s</string>
++</resources>
+--- /dev/null
++++ b/main/res/values-ja/maintenance.xml
+@@ -0,0 +1,15 @@
++<resources>
++    <string name="period">記録期間</string>
++    <string name="all_dates">全期間</string>
++    <string name="this_month">今月</string>
++    <string name="last_month">先月</string>
++    <string name="custom_dates">期間を指定</string>
++    <string name="start_day">開始日</string>
++    <string name="end_day">終了日</string>
++    <string name="history_all">整備履歴をすべて見る</string>
++    <string name="cost_optional">整備費用（KRW、任意）</string>
++    <string name="repeat_km">次回までの距離（km、任意）</string>
++    <string name="repeat_months">次回までの月数（任意）</string>
++    <string name="check_completion">日付、走行距離、費用、間隔を確認してください。</string>
++    <string name="backup_preview">車両 %1$s · 支出 %2$d件 · 最終支出 %3$s</string>
++</resources>
