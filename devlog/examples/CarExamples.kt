@@ -59,3 +59,9 @@ fun main() {
     check(runCatching { dueSoon(Care(null, null), 10_000, today) }.isFailure)
     println("PASS: monthly totals, inclusive daily budget, and date/distance reminders")
 }
+
+// 기록 화면에서 시작일과 종료일을 모두 포함하는 기간 필터 예시.
+fun paymentsInPeriod(payments: List<Payment>, firstDay: LocalDate, lastDay: LocalDate): List<Payment> {
+    require(!lastDay.isBefore(firstDay))
+    return payments.filter { it.day in firstDay..lastDay }
+}
